@@ -1,0 +1,43 @@
+			withCredentials([[$class: 'UsernamePasswordMultiBinding', credentialsId: 'LL',usernameVariable: 'GIT_AUTH_USR', passwordVariable: 'GIT_AUTH_PSW']]){
+            stage ('Create TAG for Code Repositories') {
+		                    
+                  sh '''set -x
+				    echo "====== Running Code Tag Creation ======="
+                  TAG_DIRECTORY=/var/lib/jenkins/BUILD_TAG/API
+                  if [ -f $TAG_DIRECTORY/${BRANCH}/api_tag_num.txt ]
+                  then
+                    PREV_NUM=`cat $TAG_DIRECTORY/${BRANCH}/api_tag_num.txt`
+                    NEW_NUM=`expr $PREV_NUM + 1`
+                  else
+                      mkdir -p $TAG_DIRECTORY/${BRANCH}
+                      echo 0 > $TAG_DIRECTORY/${BRANCH}/api_tag_num.txt
+                      PREV_NUM=`cat $TAG_DIRECTORY/${BRANCH}/api_tag_num.txt`
+                      NEW_NUM=`expr $PREV_NUM + 1`
+                  fi
+
+                  echo $NEW_NUM > $TAG_DIRECTORY/${BRANCH}/api_tag_num.txt
+                  BUILDNUM=`cat $TAG_DIRECTORY/${BRANCH}/api_tag_num.txt`
+                  TAG=${BRANCH}-CODE-TAG-$BUILDNUM
+				  echo ${TAG}
+                  echo TEST
+                  ## Below is done to convert the TAG which can be used a lable for Google Image, as Google Image does not support Upper Case and '.'
+                  TAG=`echo ${TAG} | sed -E "s/[^a-zA-Z0-9-]/-/g" | cut -c 1-62 | awk '{print tolower($0)}'`
+                  #if [ "${TAG: -1}" == '-' ];then TAG=`echo ${TAG}`; fi
+                    echo TEST
+                  echo "${TAG}" > CODE_TAG_INFO.txt
+
+                  echo "created on `TZ=Asia/Calcutta date ` with tag ${TAG} and branch ${BRANCH} " >> $TAG_DIRECTORY/${BRANCH}/tag_info.txt
+                  #Code Build TAG
+                  git tag -l ${TAG}
+                  sleep 10
+                  git tag -a -f -m "Tagging on ${BRANCH} : ${TAG}" ${TAG}
+                  sleep 10
+				  echo "Pushing Tag" 
+				  git config --local credential.helper "!f() { echo username=\\$GIT_AUTH_USR; echo password=\\$GIT_AUTH_PSW; }; f"
+                  git push https://del.tools.publicis.sapient.com/bitbucket/scm/dcp/dcp_java.git ${TAG}
+
+                  echo "$TAG" > CODE_TAG_INFO.txt
+				  echo "${CODE_TAG_NAME}"
+                  '''
+			}
+			}
